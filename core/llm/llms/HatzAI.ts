@@ -34,11 +34,14 @@ class HatzAI extends BaseLLM {
     useLegacyCompletionsEndpoint: false,
   };
 
+  public autoTool: boolean = false;
+
   public useLegacyCompletionsEndpoint: boolean = false;
 
   constructor(options: LLMOptions) {
     super(options);
     this.useLegacyCompletionsEndpoint = false;
+    this.autoTool = (options as any).autoTool ?? false;
   }
 
   // Hatz does not support the legacy /completions endpoint
@@ -49,6 +52,10 @@ class HatzAI extends BaseLLM {
   // Hatz does not support FIM
   supportsFim(): boolean {
     return false;
+  }
+
+  supportsTool(): "native" | "llm" | undefined {
+    return "native";
   }
 
   protected _getHeaders() {
@@ -76,19 +83,51 @@ class HatzAI extends BaseLLM {
 
   /**
    * Convert messages to Hatz-compatible format.
-   * Flattens all content arrays to plain strings.
+   * Flattens all content arrays to plain strings, and preserves
+   * tool_calls on assistant messages and tool_call_id on tool-result messages.
    */
-  private _convertMessagesForHatz(body: any): any {
-    const messages = body.messages.map((msg: any) => ({
-      ...msg,
-      content: flattenContent(msg.content),
-    }));
+  private _convertMessagesForHatz(
+    body: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const messages = (body.messages as ChatMessage[]).map((msg) => {
+      const converted: Record<string, unknown> = {
+        role: msg.role,
+        content: flattenContent(msg.content),
+      };
+
+      // Preserve tool_calls on assistant messages so the API
+      // can see prior tool-use turns in the conversation
+      if (
+        msg.role === "assistant" &&
+        msg.toolCalls &&
+        msg.toolCalls.length > 0
+      ) {
+        converted.tool_calls = msg.toolCalls.map((tc) => ({
+          id: tc.id,
+          type: tc.type,
+          function: {
+            name: tc.function.name,
+            arguments: tc.function.arguments,
+          },
+        }));
+      }
+
+      // Preserve tool_call_id on tool-result messages
+      if (msg.role === "tool" && "toolCallId" in msg) {
+        converted.tool_call_id = (
+          msg as ChatMessage & { toolCallId: string }
+        ).toolCallId;
+      }
+
+      return converted;
+    });
 
     // Build Hatz request body
-    const hatzBody: any = {
+    const hatzBody: Record<string, unknown> = {
       ...body, // Keep tools, tool_choice, etc.
       messages, // Override with flattened messages
-      stream: body.stream ?? false,
+      stream: (body.stream as boolean) ?? false,
+      auto_tool: this.autoTool,
     };
 
     // Map standard parameters
@@ -138,10 +177,30 @@ class HatzAI extends BaseLLM {
     const data = await response.json();
 
     if (data.choices?.[0]?.message) {
-      yield {
+      const message = data.choices[0].message;
+      const chatMessage: ChatMessage = {
         role: "assistant",
-        content: data.choices[0].message.content ?? "",
+        content: message.content ?? "",
       };
+
+      if (message.tool_calls && message.tool_calls.length > 0) {
+        chatMessage.toolCalls = message.tool_calls.map(
+          (tc: {
+            id: string;
+            type: string;
+            function: { name: string; arguments: string };
+          }) => ({
+            id: tc.id,
+            type: tc.type as "function",
+            function: {
+              name: tc.function.name,
+              arguments: tc.function.arguments,
+            },
+          }),
+        );
+      }
+
+      yield chatMessage;
     }
   }
 

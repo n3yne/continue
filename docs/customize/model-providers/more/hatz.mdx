@@ -46,4 +46,36 @@ We recommend configuring **anthropic.claude-opus-4-6** as your chat model.
     </Tab>
 </Tabs>
 
+## Auto-Tool
+
+Hatz.AI's Auto-Tool feature gives models the ability to use tools, even if the model doesn't natively support function calling. To enable it, add `autoTool: true` to your model config:
+
+<Tabs>
+    <Tab title="YAML">
+    ```yaml title="config.yaml"
+    models:
+      - name: Hatz Claude Opus
+        provider: hatz
+        model: anthropic.claude-opus-4-6
+        apiKey: <YOUR_HATZ_API_KEY>
+        autoTool: true
+    ```
+    </Tab>
+    <Tab title="JSON">
+    ```json title="config.json"
+    {
+      "models": [
+        {
+          "title": "Hatz Claude Opus",
+          "provider": "hatz",
+          "model": "anthropic.claude-opus-4-6",
+          "apiKey": "<YOUR_HATZ_API_KEY>",
+          "autoTool": true
+        }
+      ]
+    }
+    ```
+    </Tab>
+</Tabs>
+
 [View the source](https://github.com/continuedev/continue/blob/main/core/llm/llms/HatzAI.ts)

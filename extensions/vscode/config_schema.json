@@ -1793,6 +1793,25 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "provider": {
+                "const": "hatz"
+              }
+            },
+            "required": ["provider"]
+          },
+          "then": {
+            "properties": {
+              "autoTool": {
+                "type": "boolean",
+                "default": false,
+                "markdownDescription": "Enable Hatz.AI Auto-Tool to give models tool-use capabilities even if they don't natively support function calling."
+              }
+            }
+          }
         }
       ]
     },
