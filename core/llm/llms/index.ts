@@ -38,7 +38,7 @@ import Llamafile from "./Llamafile";
 import LlamaStack from "./LlamaStack";
 import LMStudio from "./LMStudio";
 import Mimo from "./Mimo";
-import Mistral from "./Mistral";
+import MiniMax from "./MiniMax";
 import MockLLM from "./Mock";
 import Moonshot from "./Moonshot";
 import Msty from "./Msty";
@@ -94,6 +94,7 @@ export const LLMClasses = [
   LMStudio,
   Mistral,
   Mimo,
+  MiniMax,
   Bedrock,
   BedrockImport,
   SageMaker,
