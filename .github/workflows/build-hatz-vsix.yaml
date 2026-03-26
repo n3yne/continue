@@ -45,6 +45,11 @@ jobs:
             echo "No new upstream commits"
           fi
 
+      - uses: actions/setup-node@v4
+        if: steps.check-changes.outputs.has-changes == 'true'
+        with:
+          node-version-file: ".nvmrc"
+
       - name: Merge upstream changes
         if: steps.check-changes.outputs.has-changes == 'true'
         run: |
@@ -53,6 +58,22 @@ jobs:
             git merge --abort
             exit 1
           }
+
+      - name: Sync lock files after merge
+        if: steps.check-changes.outputs.has-changes == 'true'
+        run: |
+          # Regenerate lock files that may be out of sync after upstream merge
+          cd extensions/vscode && npm install --package-lock-only && cd ../..
+          cd core && npm install --package-lock-only && cd ..
+          cd gui && npm install --package-lock-only && cd ..
+
+          # Commit updated lock files if any changed
+          if git diff --quiet; then
+            echo "Lock files already in sync"
+          else
+            git add -A '**/package-lock.json'
+            git commit -m "chore: sync lock files after upstream merge"
+          fi
 
       - name: Push merged changes
         if: steps.check-changes.outputs.has-changes == 'true'
